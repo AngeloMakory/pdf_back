@@ -8,7 +8,7 @@ CORS(app)
 db = mysql.connector.connect(
     host="172.17.0.1",
     user="root",
-    password="",
+    password="Angelo@123",
     database="pdf_db"
 )
 cursor = db.cursor(dictionary=True)
