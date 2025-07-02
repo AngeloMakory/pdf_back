@@ -6,12 +6,17 @@ app = Flask(__name__)
 CORS(app)
 
 db = mysql.connector.connect(
-    host="192.168.1.1",
+    host="localhost",
     user="root",
     password="",
     database="pdf_db"
 )
 cursor = db.cursor(dictionary=True)
+
+cursor.execute("SHOW TABLES;")
+for table in cursor.fetchall():
+    print(table)
+
 
 @app.route("/api/messages", methods=["GET"])
 def get_messages():
