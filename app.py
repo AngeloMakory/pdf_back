@@ -6,7 +6,7 @@ app = Flask(__name__)
 CORS(app)
 
 db = mysql.connector.connect(
-    host="localhost",
+    host="host.docker.internal",
     user="root",
     password="",
     database="pdf_db"
