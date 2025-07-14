@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pymysql
-from pymysql import pooling
+#from pymysql import pooling
 import os
 from werkzeug.utils import secure_filename
 from PyPDF2 import PdfReader
