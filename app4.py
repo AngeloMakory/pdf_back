@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import pymysql
-from pymysql import pooling
+import mysql.connector
+from mysql.connector import pooling
 import os
 from werkzeug.utils import secure_filename
 from PyPDF2 import PdfReader
@@ -32,30 +32,14 @@ db_config = {
     'user': "angelo", 
     'password': "Angelo@123",
     'database': "pdf_db",
-    'charset': 'utf8mb4',
+    'pool_name': 'pdf_pool',
+    'pool_size': 10,
+    'pool_reset_session': True,
     'autocommit': True
 }
 
-# Simple connection pool using pymysql
-class SimpleConnectionPool:
-    def __init__(self, **config):
-        self.config = config
-        self.pool = []
-        self.pool_size = 10
-        
-    def get_connection(self):
-        if self.pool:
-            return self.pool.pop()
-        return pymysql.connect(**self.config)
-    
-    def return_connection(self, conn):
-        if len(self.pool) < self.pool_size:
-            self.pool.append(conn)
-        else:
-            conn.close()
-
 try:
-    connection_pool = SimpleConnectionPool(**db_config)
+    connection_pool = pooling.MySQLConnectionPool(**db_config)
     logger.info("Database connection pool created successfully")
 except Exception as e:
     logger.error(f"Failed to create database pool: {e}")
@@ -90,6 +74,7 @@ def init_database():
             INDEX idx_file_hash (file_hash)
         )
         """)
+
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS pdf_summaries (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -248,7 +233,7 @@ def handle_exception(e):
 def get_pdfs():
     """Get all PDFs with their summaries"""
     conn = get_db_connection()
-    cursor = conn.cursor(pymysql.cursors.DictCursor)
+    cursor = conn.cursor(dictionary=True)
     
     try:
         cursor.execute("""
@@ -282,18 +267,18 @@ def get_pdfs():
         return jsonify({"error": "Failed to fetch PDFs"}), 500
     finally:
         cursor.close()
-        connection_pool.return_connection(conn)
+        conn.close()
 
 @app.route("/api/pdfs", methods=["POST"])
 def upload_pdf():
     """Upload and process PDF"""
     if 'file' not in request.files:
         return jsonify({"error": "No file part"}), 400
-    
+
     file = request.files['file']
     if file.filename == '':
         return jsonify({"error": "No selected file"}), 400
-    
+
     if not file or not allowed_file(file.filename):
         return jsonify({"error": "Invalid file type. Only PDF files are allowed."}), 400
 
@@ -309,7 +294,7 @@ def upload_pdf():
         file_size = os.path.getsize(filepath)
         
         conn = get_db_connection()
-        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor = conn.cursor(dictionary=True)
         
         # Check for duplicates
         if file_hash:
@@ -377,13 +362,13 @@ def upload_pdf():
         if 'cursor' in locals():
             cursor.close()
         if 'conn' in locals():
-            connection_pool.return_connection(conn)
+            conn.close()
 
 @app.route("/api/pdfs/<int:pdf_id>", methods=["DELETE"])
 def delete_pdf(pdf_id):
     """Delete PDF and its summary"""
     conn = get_db_connection()
-    cursor = conn.cursor(pymysql.cursors.DictCursor)
+    cursor = conn.cursor(dictionary=True)
     
     try:
         # Get file path
@@ -416,13 +401,13 @@ def delete_pdf(pdf_id):
         return jsonify({"error": "Failed to delete PDF"}), 500
     finally:
         cursor.close()
-        connection_pool.return_connection(conn)
+        conn.close()
 
 @app.route("/api/pdfs/<int:pdf_id>/reprocess", methods=["POST"])
 def reprocess_pdf(pdf_id):
     """Reprocess PDF with updated summarization"""
     conn = get_db_connection()
-    cursor = conn.cursor(pymysql.cursors.DictCursor)
+    cursor = conn.cursor(dictionary=True)
     
     try:
         # Get PDF info
@@ -461,7 +446,7 @@ def reprocess_pdf(pdf_id):
         return jsonify({"error": "Failed to reprocess PDF"}), 500
     finally:
         cursor.close()
-        connection_pool.return_connection(conn)
+        conn.close()
 
 @app.route("/api/health", methods=["GET"])
 def health_check():
@@ -471,7 +456,7 @@ def health_check():
         cursor = conn.cursor()
         cursor.execute("SELECT 1")
         cursor.close()
-        connection_pool.return_connection(conn)
+        conn.close()
         return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()}), 200
     except Exception as e:
         logger.error(f"Health check failed: {e}")
