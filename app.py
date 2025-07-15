@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 # Database connection pool for better performance
 db_config = {
-    'host': "localhost",
+    'host': "172.31.89.13",
     'user': "angelo", 
     'password': "Angelo@123",
     'database': "pdf_db",
