@@ -86,3 +86,17 @@ db.create_all()
 
 python3 app.py
 
+## Project Structure 
+pdf_assistant
+            |
+            |____docker_compose.yml
+            |____pdf_back
+
+## Docker Compose
+### To run the container with its frontend counterpart simultaneously, do
+``` docker-compose up --build -d
+```
+
+
+          
+
